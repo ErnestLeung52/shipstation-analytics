@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { readCSVFile } from './utils/fileReader.js';
 import { calculateStoreMetrics, calculateTagMetrics } from './metrics/calculator.js';
 import { displayStoreMetrics, displayTagMetrics } from './display/reporter.js';
+import { selectCSVFile } from './utils/fileSelector.js';
 
 // Get the directory name in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -26,19 +27,22 @@ const program = new Command();
 program
 	.name('shipstation-calculator')
 	.description('Calculate metrics from ShipStation CSV data')
-	.version('1.0.0')
-	.argument('<filename>', 'CSV file to analyze (will look in "ShipStation Orders" folder by default)')
+	.argument('[filename]', 'CSV file to analyze (optional - will show file selector if not provided)')
 	.option('-s, --store-only', 'Only calculate store metrics')
 	.option('-t, --tag-only', 'Only calculate tag metrics')
+	.option('-c, --compact', 'Display metrics in compact table format')
 	.action(async (filename, options) => {
 		try {
 			console.log(chalk.blue('ShipStation Rates Calculator'));
-			console.log(chalk.gray(`Analyzing file: ${filename}\n`));
+
+			// If no filename is provided, show the file selector
+			const fileToAnalyze = filename || (await selectCSVFile());
+
+			console.log(chalk.gray(`Analyzing file: ${fileToAnalyze}\n`));
 
 			// Read and parse the CSV file
-			// The file reader will check both the current directory and the ShipStation Orders folder
 			console.log(chalk.yellow('Reading CSV file...'));
-			const data = await readCSVFile(filename);
+			const data = await readCSVFile(fileToAnalyze);
 			console.log(chalk.green(`Successfully read ${data.length} records\n`));
 
 			// Calculate and display metrics based on options
