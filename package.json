@@ -8,6 +8,7 @@
 		"report": "node src/index.js",
 		"r": "node src/index.js",
 		"save-report": "node src/index.js --save",
+		"save-csv": "node src/index.js --save --csv",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [
@@ -22,8 +23,10 @@
 		"cli-table3": "^0.6.5",
 		"commander": "^11.0.0",
 		"csv-parser": "^3.0.0",
+		"exceljs": "^4.4.0",
 		"fs-extra": "^11.1.1",
-		"inquirer": "^12.4.2"
+		"inquirer": "^12.4.2",
+		"xlsx": "^0.18.5"
 	},
 	"type": "module"
 }

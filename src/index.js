@@ -17,6 +17,7 @@ import { calculateStoreMetrics, calculateTagMetrics } from './metrics/calculator
 import { displayStoreMetrics, displayTagMetrics } from './display/reporter.js';
 import { selectCSVFile } from './utils/fileSelector.js';
 import { saveReportToCSV } from './utils/reportExporter.js';
+import { saveReportToExcel } from './utils/excelExporter.js';
 
 // Get the directory name in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +33,8 @@ program
 	.option('-s, --store-only', 'Only calculate store metrics')
 	.option('-t, --tag-only', 'Only calculate tag metrics')
 	.option('-c, --compact', 'Display metrics in compact table format')
-	.option('--save', 'Save the report to a CSV file')
+	.option('--save', 'Save the report to an Excel file')
+	.option('--csv', 'Save the report as CSV instead of Excel (when used with --save)')
 	.action(async (filename, options) => {
 		try {
 			console.log(chalk.blue('ShipStation Rates Calculator'));
@@ -72,11 +74,19 @@ program
 				displayTagMetrics(tagMetrics);
 			}
 
-			// Save report to CSV if --save option is provided
+			// Save report if --save option is provided
 			if (options.save) {
-				console.log(chalk.yellow('\nSaving report to CSV file...'));
-				const savedFilePath = await saveReportToCSV(storeMetrics, tagMetrics, fileToAnalyze);
-				console.log(chalk.green(`Report saved to: ${savedFilePath}`));
+				if (options.csv) {
+					// Save as CSV if --csv option is provided
+					console.log(chalk.yellow('\nSaving report to CSV file...'));
+					const savedFilePath = await saveReportToCSV(storeMetrics, tagMetrics, fileToAnalyze);
+					console.log(chalk.green(`Report saved to: ${savedFilePath}`));
+				} else {
+					// Save as Excel by default
+					console.log(chalk.yellow('\nSaving report to Excel file...'));
+					const savedFilePath = await saveReportToExcel(storeMetrics, tagMetrics, fileToAnalyze);
+					console.log(chalk.green(`Report saved to: ${savedFilePath}`));
+				}
 			}
 		} catch (error) {
 			console.error(chalk.red(`Error: ${error.message}`));
