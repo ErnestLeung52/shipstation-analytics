@@ -16,6 +16,7 @@ import { readCSVFile } from './utils/fileReader.js';
 import { calculateStoreMetrics, calculateTagMetrics } from './metrics/calculator.js';
 import { displayStoreMetrics, displayTagMetrics } from './display/reporter.js';
 import { selectCSVFile } from './utils/fileSelector.js';
+import { saveReportToCSV } from './utils/reportExporter.js';
 
 // Get the directory name in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +32,7 @@ program
 	.option('-s, --store-only', 'Only calculate store metrics')
 	.option('-t, --tag-only', 'Only calculate tag metrics')
 	.option('-c, --compact', 'Display metrics in compact table format')
+	.option('--save', 'Save the report to a CSV file')
 	.action(async (filename, options) => {
 		try {
 			console.log(chalk.blue('ShipStation Rates Calculator'));
@@ -68,6 +70,13 @@ program
 			if (!options.storeOnly) {
 				// Display tag metrics with total orders count
 				displayTagMetrics(tagMetrics);
+			}
+
+			// Save report to CSV if --save option is provided
+			if (options.save) {
+				console.log(chalk.yellow('\nSaving report to CSV file...'));
+				const savedFilePath = await saveReportToCSV(storeMetrics, tagMetrics, fileToAnalyze);
+				console.log(chalk.green(`Report saved to: ${savedFilePath}`));
 			}
 		} catch (error) {
 			console.error(chalk.red(`Error: ${error.message}`));

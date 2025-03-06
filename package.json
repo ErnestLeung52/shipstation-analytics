@@ -7,6 +7,7 @@
 		"start": "node src/index.js",
 		"report": "node src/index.js",
 		"r": "node src/index.js",
+		"save-report": "node src/index.js --save",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [
