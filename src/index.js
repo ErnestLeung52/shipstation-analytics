@@ -45,14 +45,28 @@ program
 			const data = await readCSVFile(fileToAnalyze);
 			console.log(chalk.green(`Successfully read ${data.length} records\n`));
 
-			// Calculate and display metrics based on options
+			// Calculate metrics
+			const storeMetrics = calculateStoreMetrics(data);
+			const tagMetrics = calculateTagMetrics(data);
+
+			// Calculate total orders across all stores
+			let totalAllStoresOrders = 0;
 			if (!options.tagOnly) {
-				const storeMetrics = calculateStoreMetrics(data);
+				// Count total orders from store metrics
+				const stores = Object.keys(storeMetrics);
+				for (const store of stores) {
+					totalAllStoresOrders += storeMetrics[store].count;
+				}
+
+				// Make total orders available globally
+				global.totalAllStoresOrders = totalAllStoresOrders;
+
+				// Display store metrics
 				displayStoreMetrics(storeMetrics);
 			}
 
 			if (!options.storeOnly) {
-				const tagMetrics = calculateTagMetrics(data);
+				// Display tag metrics with total orders count
 				displayTagMetrics(tagMetrics);
 			}
 		} catch (error) {

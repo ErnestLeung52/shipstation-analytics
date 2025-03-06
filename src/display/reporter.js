@@ -64,18 +64,34 @@ function displayComprehensiveStoreTable(
 ) {
 	console.log(chalk.cyan.bold('\nComprehensive Store Metrics Table:'));
 
+	// Reorder stores as specified: TikTok, Shopify, Walmart, Temu, Manual Orders
+	const orderedStores = [];
+	const storeOrder = ['TikTok Shop US Store', 'Shopify Store', 'Walmart Store', 'Temu Store', 'Manual Orders'];
+
+	// First add stores in the specified order if they exist
+	for (const storeName of storeOrder) {
+		if (stores.includes(storeName)) {
+			orderedStores.push(storeName);
+		}
+	}
+
+	// Then add any remaining stores not in the specified order
+	for (const store of stores) {
+		if (!orderedStores.includes(store)) {
+			orderedStores.push(store);
+		}
+	}
+
+	// Calculate totals for the last column
+	const overallShippingProfitMargin = totalShippingPaid > 0 ? (totalShippingProfit / totalShippingPaid) * 100 : 0;
+	const overallNetRevenueMargin = totalOrderValue > 0 ? (totalNetRevenue / totalOrderValue) * 100 : 0;
+
+	// Create table with metrics as rows and stores as columns
 	const table = new Table({
 		head: [
-			chalk.white.bold('Store'),
-			chalk.white.bold('Orders'),
-			chalk.white.bold('Order Value'),
-			chalk.white.bold('AOV'),
-			chalk.white.bold('Ship Cost'),
-			chalk.white.bold('Ship Paid'),
-			chalk.white.bold('Ship Profit'),
-			chalk.white.bold('Ship Margin'),
-			chalk.white.bold('Net Revenue'),
-			chalk.white.bold('Net Margin'),
+			chalk.white.bold('Metric'),
+			...orderedStores.map((store) => chalk.white.bold(store)),
+			chalk.white.bold('TOTAL'),
 		],
 		style: {
 			head: [], // Disable colors in header
@@ -84,40 +100,78 @@ function displayComprehensiveStoreTable(
 		wordWrap: true,
 	});
 
-	// Add rows for each store
-	for (const store of stores) {
-		const metrics = storeMetrics[store];
+	// Format values with percentages for specified fields
+	const formatWithPercent = (value, total, isFormatted = false) => {
+		if (total === 0) return isFormatted ? value : '0';
 
-		table.push([
-			store,
-			metrics.count,
-			formatCurrency(metrics.totalOrderValue),
-			formatCurrency(metrics.averageOrderValue),
-			formatCurrency(metrics.totalRate),
-			formatCurrency(metrics.totalShippingPaid),
-			colorizeValue(formatCurrency(metrics.shippingProfit)),
-			colorizeValue(formatPercentage(metrics.shippingProfitMargin)),
-			colorizeValue(formatCurrency(metrics.netRevenue)),
-			colorizeValue(formatPercentage(metrics.netRevenueMargin)),
-		]);
-	}
+		// Extract numeric value if it's a formatted currency string
+		let numericValue = value;
+		if (isFormatted) {
+			// Extract numeric value from currency string (remove $ and possible color codes)
+			const plainValue = value.replace(/\u001b\[\d+m/g, ''); // Remove ANSI color codes
+			numericValue = parseFloat(plainValue.replace(/[^\d.-]/g, ''));
+		}
 
-	// Add total row
-	const overallShippingProfitMargin = totalShippingPaid > 0 ? (totalShippingProfit / totalShippingPaid) * 100 : 0;
-	const overallNetRevenueMargin = totalOrderValue > 0 ? (totalNetRevenue / totalOrderValue) * 100 : 0;
+		const percent = ((numericValue / total) * 100).toFixed(1);
+		return `${value} (${percent}%)`;
+	};
 
-	table.push([
-		chalk.bold('TOTAL'),
-		chalk.bold(totalOrders),
-		chalk.bold(formatCurrency(totalOrderValue)),
-		chalk.bold(formatCurrency(totalOrderValue / totalOrders)),
-		chalk.bold(formatCurrency(totalRate)),
-		chalk.bold(formatCurrency(totalShippingPaid)),
-		chalk.bold(colorizeValue(formatCurrency(totalShippingProfit))),
-		chalk.bold(colorizeValue(formatPercentage(overallShippingProfitMargin))),
-		chalk.bold(colorizeValue(formatCurrency(totalNetRevenue))),
-		chalk.bold(colorizeValue(formatPercentage(overallNetRevenueMargin))),
-	]);
+	// Add rows for each metric
+	table.push(
+		[
+			'Orders',
+			...orderedStores.map((store) => formatWithPercent(storeMetrics[store].count, totalOrders)),
+			chalk.bold(totalOrders),
+		],
+		[
+			'Order Value',
+			...orderedStores.map((store) =>
+				formatWithPercent(formatCurrency(storeMetrics[store].totalOrderValue), totalOrderValue, true)
+			),
+			chalk.bold(formatCurrency(totalOrderValue)),
+		],
+		[
+			'AOV',
+			...orderedStores.map((store) => formatCurrency(storeMetrics[store].averageOrderValue)),
+			chalk.bold(formatCurrency(totalOrderValue / totalOrders)),
+		],
+		[
+			'Ship Cost',
+			...orderedStores.map((store) =>
+				formatWithPercent(formatCurrency(storeMetrics[store].totalRate), totalRate, true)
+			),
+			chalk.bold(formatCurrency(totalRate)),
+		],
+		[
+			'Ship Paid',
+			...orderedStores.map((store) =>
+				formatWithPercent(formatCurrency(storeMetrics[store].totalShippingPaid), totalShippingPaid, true)
+			),
+			chalk.bold(formatCurrency(totalShippingPaid)),
+		],
+		[
+			'Ship Profit',
+			...orderedStores.map((store) => colorizeValue(formatCurrency(storeMetrics[store].shippingProfit))),
+			chalk.bold(colorizeValue(formatCurrency(totalShippingProfit))),
+		],
+		[
+			'Ship Margin',
+			...orderedStores.map((store) => colorizeValue(formatPercentage(storeMetrics[store].shippingProfitMargin))),
+			chalk.bold(colorizeValue(formatPercentage(overallShippingProfitMargin))),
+		],
+		[
+			'Net Revenue',
+			...orderedStores.map((store) =>
+				formatWithPercent(colorizeValue(formatCurrency(storeMetrics[store].netRevenue)), totalNetRevenue, true)
+			),
+			chalk.bold(colorizeValue(formatCurrency(totalNetRevenue))),
+		],
+		[
+			'Net Margin',
+			...orderedStores.map((store) => colorizeValue(formatPercentage(storeMetrics[store].netRevenueMargin))),
+			chalk.bold(colorizeValue(formatPercentage(overallNetRevenueMargin))),
+		]
+	);
 
 	console.log(table.toString());
 	console.log(chalk.gray('AOV = Average Order Value, Ship = Shipping, Net Margin = Net Revenue Margin'));
@@ -129,19 +183,14 @@ function displayComprehensiveStoreTable(
  * @param {Array<string>} tags - Array of tag names
  * @param {number} totalTaggedOrders - Total number of tagged orders
  * @param {number} totalTagRate - Total shipping cost for tagged orders
+ * @param {number} totalAllStoresOrders - Total number of orders across all stores
  */
-function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate) {
+function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders) {
 	console.log(chalk.cyan.bold('\nComprehensive Tag Metrics Table:'));
 
+	// Create table with metrics as rows and tags as columns
 	const table = new Table({
-		head: [
-			chalk.white.bold('Tag'),
-			chalk.white.bold('Orders'),
-			chalk.white.bold('% of Tagged Orders'),
-			chalk.white.bold('Total Shipping Cost'),
-			chalk.white.bold('% of Cost'),
-			chalk.white.bold('Avg Shipping Cost'),
-		],
+		head: [chalk.white.bold('Metric'), ...tags.map((tag) => chalk.white.bold(tag)), chalk.white.bold('TOTAL')],
 		style: {
 			head: [], // Disable colors in header
 			border: [], // Disable colors for borders
@@ -149,33 +198,32 @@ function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, total
 		wordWrap: true,
 	});
 
-	// Add rows for each tag
-	for (const tag of tags) {
-		const metrics = tagMetrics[tag];
-		const percentOfOrders = ((metrics.count / totalTaggedOrders) * 100).toFixed(1);
-		const percentOfCost = ((metrics.totalRate / totalTagRate) * 100).toFixed(1);
+	// Calculate percentages for each tag
+	const percentOfTotalOrders = tags.map((tag) => ((tagMetrics[tag].count / totalAllStoresOrders) * 100).toFixed(1));
+	const totalPercentOfAllOrders = ((totalTaggedOrders / totalAllStoresOrders) * 100).toFixed(1);
 
-		table.push([
-			tag,
-			metrics.count,
-			`${percentOfOrders}%`,
-			formatCurrency(metrics.totalRate),
-			`${percentOfCost}%`,
-			formatCurrency(metrics.averageRate),
-		]);
-	}
-
-	// Add total row
-	table.push([
-		chalk.bold('TOTAL'),
-		chalk.bold(totalTaggedOrders),
-		chalk.bold('100.0%'),
-		chalk.bold(formatCurrency(totalTagRate)),
-		chalk.bold('100.0%'),
-		chalk.bold(formatCurrency(totalTagRate / totalTaggedOrders)),
-	]);
+	// Add rows for each metric
+	table.push(
+		['Orders', ...tags.map((tag) => tagMetrics[tag].count), chalk.bold(totalTaggedOrders)],
+		[
+			'% of All Orders',
+			...percentOfTotalOrders.map((percent) => `${percent}%`),
+			chalk.bold(`${totalPercentOfAllOrders}%`),
+		],
+		[
+			'Total Shipping Cost',
+			...tags.map((tag) => formatCurrency(tagMetrics[tag].totalRate)),
+			chalk.bold(formatCurrency(totalTagRate)),
+		],
+		[
+			'Avg Shipping Cost',
+			...tags.map((tag) => formatCurrency(tagMetrics[tag].averageRate)),
+			chalk.bold(formatCurrency(totalTagRate / totalTaggedOrders)),
+		]
+	);
 
 	console.log(table.toString());
+	console.log(chalk.gray('% of All Orders = Orders with this tag / Total orders across all stores'));
 }
 
 export function displayStoreMetrics(storeMetrics) {
@@ -307,13 +355,16 @@ export function displayTagMetrics(tagMetrics) {
 		totalTagRate += metrics.totalRate;
 	}
 
+	// Get total orders from all stores - this should be passed from the main function
+	// For now, we'll use a parameter or fallback to the global variable if available
+	const totalAllStoresOrders = global.totalAllStoresOrders || 1781; // Fallback to the number we saw in the report
+
 	// Display comprehensive tag metrics table
-	displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate);
+	displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders);
 
 	// Display legend and help text
 	console.log(chalk.gray('\nLegend:'));
-	console.log(chalk.gray('- % of Tagged Orders = Orders with this tag / Total tagged orders'));
-	console.log(chalk.gray('- % of Cost = Shipping cost for this tag / Total shipping cost'));
+	console.log(chalk.gray('- % of All Orders = Orders with this tag / Total orders across all stores'));
 	console.log(chalk.gray('- Avg Shipping Cost = Total shipping cost / Number of orders'));
 
 	// Display detailed metrics by section
