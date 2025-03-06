@@ -27,4 +27,5 @@ build/
 *.log
 
 # CSV files
-ShipStation Orders/
+ShipStation Orders/*
+!ShipStation Orders/.gitkeep
