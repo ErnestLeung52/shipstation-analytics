@@ -51,6 +51,7 @@ function colorizeValue(formattedValue) {
  * @param {number} totalShippingPaid - Total shipping paid by customers
  * @param {number} totalShippingProfit - Total shipping profit
  * @param {number} totalNetRevenue - Total net revenue
+ * @param {string} fileName - Name of the file being analyzed
  */
 function displayComprehensiveStoreTable(
 	storeMetrics,
@@ -60,9 +61,14 @@ function displayComprehensiveStoreTable(
 	totalRate,
 	totalShippingPaid,
 	totalShippingProfit,
-	totalNetRevenue
+	totalNetRevenue,
+	fileName
 ) {
-	console.log(chalk.cyan.bold('\nComprehensive Store Metrics Table:'));
+	// Extract period from filename (e.g., "Feb-March 2025" from "./ShipStation Orders/Feb-March 2025.csv")
+	const periodMatch = fileName ? fileName.match(/([^\/]+)\.csv$/) : null;
+	const period = periodMatch ? periodMatch[1] : 'Current Period';
+
+	console.log(chalk.cyan.bold(`\n${period} Store Shipping Analytics | ${period} 店铺物流分析`));
 
 	// Reorder stores as specified: TikTok, Shopify, Walmart, Temu, Manual Orders
 	const orderedStores = [];
@@ -89,9 +95,9 @@ function displayComprehensiveStoreTable(
 	// Create table with metrics as rows and stores as columns
 	const table = new Table({
 		head: [
-			chalk.white.bold('Metric'),
+			chalk.white.bold('Metric | 指标'),
 			...orderedStores.map((store) => chalk.white.bold(store)),
-			chalk.white.bold('TOTAL'),
+			chalk.white.bold('TOTAL | 总计'),
 		],
 		style: {
 			head: [], // Disable colors in header
@@ -113,72 +119,77 @@ function displayComprehensiveStoreTable(
 		}
 
 		const percent = ((numericValue / total) * 100).toFixed(1);
-		return `${value} (${percent}%)`;
+		// Use chalk.gray for the percentage part to create visual contrast
+		return `${value} ${chalk.gray(`(${percent}%)`)}`;
 	};
 
 	// Add rows for each metric
 	table.push(
 		[
-			'Orders',
+			'Orders | 订单数',
 			...orderedStores.map((store) => formatWithPercent(storeMetrics[store].count, totalOrders)),
 			chalk.bold(totalOrders),
 		],
 		[
-			'Order Value',
+			'Order Value | 订单价值',
 			...orderedStores.map((store) =>
 				formatWithPercent(formatCurrency(storeMetrics[store].totalOrderValue), totalOrderValue, true)
 			),
 			chalk.bold(formatCurrency(totalOrderValue)),
 		],
 		[
-			'AOV',
+			'AOV | 平均订单价值',
 			...orderedStores.map((store) => formatCurrency(storeMetrics[store].averageOrderValue)),
 			chalk.bold(formatCurrency(totalOrderValue / totalOrders)),
 		],
 		[
-			'Ship Cost',
+			'Ship Cost | 物流成本',
 			...orderedStores.map((store) =>
 				formatWithPercent(formatCurrency(storeMetrics[store].totalRate), totalRate, true)
 			),
 			chalk.bold(formatCurrency(totalRate)),
 		],
 		[
-			'Ship Paid',
+			'Ship Paid | 物流收入',
 			...orderedStores.map((store) =>
 				formatWithPercent(formatCurrency(storeMetrics[store].totalShippingPaid), totalShippingPaid, true)
 			),
 			chalk.bold(formatCurrency(totalShippingPaid)),
 		],
 		[
-			'Ship Profit',
+			'Ship Profit | 物流利润',
 			...orderedStores.map((store) => colorizeValue(formatCurrency(storeMetrics[store].shippingProfit))),
 			chalk.bold(colorizeValue(formatCurrency(totalShippingProfit))),
 		],
 		[
-			'Ship Margin',
+			'Ship Margin | 物流利润率',
 			...orderedStores.map((store) => colorizeValue(formatPercentage(storeMetrics[store].shippingProfitMargin))),
 			chalk.bold(colorizeValue(formatPercentage(overallShippingProfitMargin))),
 		],
 		[
-			'Net Revenue',
+			'Net Revenue | 净收入',
 			...orderedStores.map((store) =>
 				formatWithPercent(colorizeValue(formatCurrency(storeMetrics[store].netRevenue)), totalNetRevenue, true)
 			),
 			chalk.bold(colorizeValue(formatCurrency(totalNetRevenue))),
 		],
 		[
-			'Net Margin',
+			'Net Margin | 净利润率',
 			...orderedStores.map((store) => colorizeValue(formatPercentage(storeMetrics[store].netRevenueMargin))),
 			chalk.bold(colorizeValue(formatPercentage(overallNetRevenueMargin))),
 		]
 	);
 
 	console.log(table.toString());
-	console.log(chalk.gray('AOV = Average Order Value, Ship = Shipping, Net Margin = Net Revenue Margin'));
+	console.log(
+		chalk.gray(
+			'AOV = Average Order Value | 平均订单价值, Ship = Shipping | 物流, Net Margin = Net Revenue Margin | 净利润率'
+		)
+	);
 }
 
 /**
- * Displays all tag metrics in a single comprehensive table
+ * Displays all special order metrics in a single comprehensive table
  * @param {Object} tagMetrics - Tag metrics object
  * @param {Array<string>} tags - Array of tag names
  * @param {number} totalTaggedOrders - Total number of tagged orders
@@ -186,11 +197,24 @@ function displayComprehensiveStoreTable(
  * @param {number} totalAllStoresOrders - Total number of orders across all stores
  */
 function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders) {
-	console.log(chalk.cyan.bold('\nComprehensive Tag Metrics Table:'));
+	console.log(chalk.cyan.bold('\nSpecial Orders Analysis | 特殊订单分析'));
+
+	// Create a map of tag descriptions in Chinese
+	const tagDescriptions = {
+		'Fulfillment Error': '仓库错误',
+		Giveaways: '免费赠品',
+		Influencer: '网红推广',
+		'Not Delivered': '未送达',
+		Replacement: '替换订单',
+	};
 
 	// Create table with metrics as rows and tags as columns
 	const table = new Table({
-		head: [chalk.white.bold('Metric'), ...tags.map((tag) => chalk.white.bold(tag)), chalk.white.bold('TOTAL')],
+		head: [
+			chalk.white.bold('Metric | 指标'),
+			...tags.map((tag) => chalk.white.bold(`${tag}\n${tagDescriptions[tag] || ''}`)),
+			chalk.white.bold('TOTAL | 总计'),
+		],
 		style: {
 			head: [], // Disable colors in header
 			border: [], // Disable colors for borders
@@ -204,36 +228,37 @@ function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, total
 
 	// Add rows for each metric
 	table.push(
-		['Orders', ...tags.map((tag) => tagMetrics[tag].count), chalk.bold(totalTaggedOrders)],
+		['Orders | 订单数', ...tags.map((tag) => tagMetrics[tag].count), chalk.bold(totalTaggedOrders)],
 		[
-			'% of All Orders',
-			...percentOfTotalOrders.map((percent) => `${percent}%`),
-			chalk.bold(`${totalPercentOfAllOrders}%`),
+			'% of All Orders | 占总订单百分比',
+			...percentOfTotalOrders.map((percent) => chalk.gray(`${percent}%`)),
+			chalk.bold(chalk.gray(`${totalPercentOfAllOrders}%`)),
 		],
 		[
-			'Total Shipping Cost',
+			'Total Shipping Cost | 总物流成本',
 			...tags.map((tag) => formatCurrency(tagMetrics[tag].totalRate)),
 			chalk.bold(formatCurrency(totalTagRate)),
 		],
 		[
-			'Avg Shipping Cost',
+			'Avg Shipping Cost | 平均物流成本',
 			...tags.map((tag) => formatCurrency(tagMetrics[tag].averageRate)),
 			chalk.bold(formatCurrency(totalTagRate / totalTaggedOrders)),
 		]
 	);
 
 	console.log(table.toString());
-	console.log(chalk.gray('% of All Orders = Orders with this tag / Total orders across all stores'));
+	console.log(chalk.gray('% of All Orders = Orders with this special category / Total orders across all stores'));
+	console.log(chalk.gray('占总订单百分比 = 特殊类别订单数 / 所有店铺总订单数'));
 }
 
-export function displayStoreMetrics(storeMetrics) {
-	console.log(chalk.blue.bold('\n=== Store Metrics ==='));
+export function displayStoreMetrics(storeMetrics, fileName) {
+	console.log(chalk.blue.bold('\n=== Store Metrics | 店铺指标 ==='));
 
-	// Get stores and sort alphabetically
-	const stores = Object.keys(storeMetrics).sort();
+	// Get stores and sort by order count (descending)
+	const stores = Object.keys(storeMetrics).sort((a, b) => storeMetrics[b].count - storeMetrics[a].count);
 
 	if (stores.length === 0) {
-		console.log(chalk.yellow('No store data found'));
+		console.log(chalk.yellow('No store data found | 未找到店铺数据'));
 		return;
 	}
 
@@ -265,35 +290,36 @@ export function displayStoreMetrics(storeMetrics) {
 		totalRate,
 		totalShippingPaid,
 		totalShippingProfit,
-		totalNetRevenue
+		totalNetRevenue,
+		fileName
 	);
 
 	// Display legend and help text
-	console.log(chalk.gray('\nLegend:'));
-	console.log(chalk.gray('- AOV = Average Order Value'));
-	console.log(chalk.gray('- Ship = Shipping'));
-	console.log(chalk.gray('- Net Margin = Net Revenue / Order Value'));
-	console.log(chalk.gray('- Ship Margin = Shipping Profit / Shipping Paid'));
-	console.log(chalk.green('- Green values indicate profit'));
-	console.log(chalk.red('- Red values indicate loss'));
-	console.log(chalk.yellow('- Yellow values indicate break-even'));
+	console.log(chalk.gray('\nLegend | 图例:'));
+	console.log(chalk.gray('- AOV = Average Order Value | 平均订单价值'));
+	console.log(chalk.gray('- Ship = Shipping | 物流'));
+	console.log(chalk.gray('- Net Margin = Net Revenue / Order Value | 净利润率 = 净收入 / 订单价值'));
+	console.log(chalk.gray('- Ship Margin = Shipping Profit / Shipping Paid | 物流利润率 = 物流利润 / 物流收入'));
+	console.log(chalk.green('- Green values indicate profit | 绿色表示盈利'));
+	console.log(chalk.red('- Red values indicate loss | 红色表示亏损'));
+	console.log(chalk.yellow('- Yellow values indicate break-even | 黄色表示收支平衡'));
 
 	// Display detailed metrics by section
-	console.log(chalk.blue.bold('\nDetailed Metrics by Store:'));
+	console.log(chalk.blue.bold('\nStores Summary | 店铺摘要:'));
 	for (const store of stores) {
 		const metrics = storeMetrics[store];
 		console.log(chalk.cyan.bold(`\n${store}:`));
 
 		// Order Summary
 		console.log(
-			chalk.white('Orders:'),
+			chalk.white('Orders | 订单:'),
 			chalk.yellow(`${metrics.count} orders`),
 			chalk.gray(`(AOV: ${formatCurrency(metrics.averageOrderValue)})`)
 		);
 
 		// Revenue Summary
 		console.log(
-			chalk.white('Revenue:'),
+			chalk.white('Revenue | 收入:'),
 			chalk.yellow(formatCurrency(metrics.totalOrderValue)),
 			chalk.gray('→'),
 			colorizeValue(formatCurrency(metrics.netRevenue)),
@@ -302,7 +328,7 @@ export function displayStoreMetrics(storeMetrics) {
 
 		// Shipping Summary
 		console.log(
-			chalk.white('Shipping:'),
+			chalk.white('Shipping | 物流:'),
 			chalk.yellow(`Cost: ${formatCurrency(metrics.totalRate)}`),
 			chalk.gray('vs'),
 			chalk.yellow(`Paid: ${formatCurrency(metrics.totalShippingPaid)}`),
@@ -313,17 +339,17 @@ export function displayStoreMetrics(storeMetrics) {
 	}
 
 	// Display overall summary
-	console.log(chalk.blue.bold('\nOverall Summary:'));
-	console.log(chalk.white('Total Orders:'), chalk.yellow(totalOrders));
+	console.log(chalk.blue.bold('\nOverall Summary | 总体摘要:'));
+	console.log(chalk.white('Total Orders | 总订单数:'), chalk.yellow(totalOrders));
 	console.log(
-		chalk.white('Total Revenue:'),
+		chalk.white('Total Revenue | 总收入:'),
 		chalk.yellow(formatCurrency(totalOrderValue)),
 		chalk.gray('→'),
 		colorizeValue(formatCurrency(totalNetRevenue)),
 		chalk.gray(`(${colorizeValue(formatPercentage((totalNetRevenue / totalOrderValue) * 100))} margin)`)
 	);
 	console.log(
-		chalk.white('Total Shipping:'),
+		chalk.white('Total Shipping | 总物流:'),
 		chalk.yellow(`Cost: ${formatCurrency(totalRate)}`),
 		chalk.gray('vs'),
 		chalk.yellow(`Paid: ${formatCurrency(totalShippingPaid)}`),
@@ -334,13 +360,13 @@ export function displayStoreMetrics(storeMetrics) {
 }
 
 export function displayTagMetrics(tagMetrics) {
-	console.log(chalk.blue.bold('\n=== Tag Metrics ==='));
+	console.log(chalk.blue.bold('\n=== Special Orders Analysis | 特殊订单分析 ==='));
 
 	// Get tags and sort alphabetically
 	const tags = Object.keys(tagMetrics).sort();
 
 	if (tags.length === 0) {
-		console.log(chalk.yellow('No tag data found'));
+		console.log(chalk.yellow('No special orders data found | 未找到特殊订单数据'));
 		return;
 	}
 
@@ -363,35 +389,67 @@ export function displayTagMetrics(tagMetrics) {
 	displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders);
 
 	// Display legend and help text
-	console.log(chalk.gray('\nLegend:'));
-	console.log(chalk.gray('- % of All Orders = Orders with this tag / Total orders across all stores'));
+	console.log(chalk.gray('\nLegend | 图例:'));
+	console.log(chalk.gray('- % of All Orders = Orders with this special category / Total orders across all stores'));
+	console.log(chalk.gray('- 占总订单百分比 = 特殊类别订单数 / 所有店铺总订单数'));
 	console.log(chalk.gray('- Avg Shipping Cost = Total shipping cost / Number of orders'));
+	console.log(chalk.gray('- 平均物流成本 = 总物流成本 / 订单数'));
+
+	// Explain each special order category
+	console.log(chalk.gray('\nSpecial Order Categories | 特殊订单类别:'));
+	console.log(chalk.gray('- Fulfillment Error | 仓库错误: Orders with errors made by warehouse staff'));
+	console.log(chalk.gray('- Giveaways | 免费赠品: Free products given for promotional purposes'));
+	console.log(chalk.gray('- Influencer | 网红推广: Orders sent to influencers for promotion'));
+	console.log(chalk.gray('- Not Delivered | 未送达: Orders that were not delivered to customers'));
+	console.log(chalk.gray('- Replacement | 替换订单: Replacement orders for damaged products'));
 
 	// Display detailed metrics by section
-	console.log(chalk.blue.bold('\nDetailed Tag Analysis:'));
+	console.log(chalk.blue.bold('\nDetailed Special Orders Analysis | 详细特殊订单分析:'));
 	for (const tag of tags) {
 		const metrics = tagMetrics[tag];
 		const percentOfOrders = ((metrics.count / totalTaggedOrders) * 100).toFixed(1);
 		const percentOfCost = ((metrics.totalRate / totalTagRate) * 100).toFixed(1);
+		const percentOfAllOrders = ((metrics.count / totalAllStoresOrders) * 100).toFixed(1);
 
-		console.log(chalk.cyan.bold(`\n${tag}:`));
+		console.log(chalk.cyan.bold(`\n${tag} | ${getChineseTagName(tag)}:`));
 		console.log(
-			chalk.white('Orders:'),
+			chalk.white('Orders | 订单:'),
 			chalk.yellow(`${metrics.count} orders`),
-			chalk.gray(`(${percentOfOrders}% of tagged orders)`)
+			chalk.gray(`(${percentOfOrders}% of special orders, ${percentOfAllOrders}% of all orders)`)
 		);
 		console.log(
-			chalk.white('Shipping:'),
+			chalk.white('Shipping | 物流:'),
 			chalk.yellow(`Total: ${formatCurrency(metrics.totalRate)}`),
-			chalk.gray(`(${percentOfCost}% of total cost)`),
+			chalk.gray(`(${percentOfCost}% of special orders cost)`),
 			chalk.gray(`Avg: ${formatCurrency(metrics.averageRate)}`)
 		);
 	}
 
 	// Display overall tag summary
-	console.log(chalk.blue.bold('\nTag Summary:'));
-	console.log(chalk.white('Total Tagged Orders:'), chalk.yellow(totalTaggedOrders));
-	console.log(chalk.white('Total Shipping Cost:'), chalk.yellow(formatCurrency(totalTagRate)));
-	console.log(chalk.white('Average Cost per Order:'), chalk.yellow(formatCurrency(totalTagRate / totalTaggedOrders)));
-	console.log(chalk.white('Unique Tags:'), chalk.yellow(tags.length));
+	console.log(chalk.blue.bold('\nSpecial Orders Summary | 特殊订单摘要:'));
+	console.log(
+		chalk.white('Total Special Orders | 总特殊订单:'),
+		chalk.yellow(totalTaggedOrders),
+		chalk.gray(`(${((totalTaggedOrders / totalAllStoresOrders) * 100).toFixed(1)}% of all orders)`)
+	);
+	console.log(chalk.white('Total Shipping Cost | 总物流成本:'), chalk.yellow(formatCurrency(totalTagRate)));
+	console.log(
+		chalk.white('Average Cost per Order | 每单平均成本:'),
+		chalk.yellow(formatCurrency(totalTagRate / totalTaggedOrders))
+	);
+	console.log(chalk.white('Unique Categories | 独特类别:'), chalk.yellow(tags.length));
+}
+
+/**
+ * Helper function to get Chinese tag names
+ */
+function getChineseTagName(tag) {
+	const tagMap = {
+		'Fulfillment Error': '仓库错误',
+		Giveaways: '免费赠品',
+		Influencer: '网红推广',
+		'Not Delivered': '未送达',
+		Replacement: '替换订单',
+	};
+	return tagMap[tag] || tag;
 }

@@ -62,7 +62,7 @@ program
 				global.totalAllStoresOrders = totalAllStoresOrders;
 
 				// Display store metrics
-				displayStoreMetrics(storeMetrics);
+				displayStoreMetrics(storeMetrics, fileToAnalyze);
 			}
 
 			if (!options.storeOnly) {
