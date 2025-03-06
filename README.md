@@ -6,7 +6,9 @@ A command-line tool to analyze ShipStation CSV data and calculate metrics.
 
 -   Reads ShipStation CSV export files
 -   Calculates order counts, total rates, and average rates by store
--   Calculates metrics for orders with specific tags
+-   Calculates order total, average order value (AOV), and shipping paid by customers
+-   Computes shipping profit/loss and net revenue after shipping costs
+-   Calculates shipping metrics for orders with specific tags
 -   Efficient processing for files with 1500-2000+ rows
 
 ## Installation
@@ -46,6 +48,35 @@ You only need to provide the filename, not the full path.
 # If your file is in the "ShipStation Orders" folder:
 node src/index.js "Feb-March 2025.csv"
 ```
+
+## Metrics Calculated
+
+### Store Metrics
+
+-   **Order Metrics**
+    -   Order count
+    -   Total order value
+    -   Average order value (AOV)
+-   **Shipping Metrics**
+    -   Total shipping cost (what you paid)
+    -   Average shipping cost
+    -   Total shipping paid by customers
+    -   Average shipping paid
+-   **Profit Metrics**
+    -   Shipping profit/loss (shipping paid minus shipping cost)
+    -   Shipping profit margin
+    -   Net revenue (order value minus shipping cost)
+    -   Net revenue margin
+
+Note: Net revenue represents the revenue available after shipping expenses, but before accounting for cost of goods sold (COGS) and other expenses.
+
+### Tag Metrics
+
+Tags are used for labeling special orders such as giveaways, influencer promotions, lost packages, etc. For tags, we calculate:
+
+-   Order count
+-   Total shipping cost
+-   Average shipping cost
 
 ## File Organization
 
