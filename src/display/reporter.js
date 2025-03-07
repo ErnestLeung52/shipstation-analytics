@@ -194,9 +194,18 @@ function displayComprehensiveStoreTable(
  * @param {number} totalTaggedOrders - Total number of tagged orders
  * @param {number} totalTagRate - Total shipping cost for tagged orders
  * @param {number} totalAllStoresOrders - Total number of orders across all stores
+ * @param {string} periodName - Period name for the report (e.g., "Feb 1-Mar 15, 2025")
  */
-function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders) {
-	console.log(chalk.cyan.bold('\nSpecial Orders Analysis | 特殊订单分析'));
+function displayComprehensiveTagTable(
+	tagMetrics,
+	tags,
+	totalTaggedOrders,
+	totalTagRate,
+	totalAllStoresOrders,
+	periodName
+) {
+	const period = periodName || 'Current Period';
+	console.log(chalk.cyan.bold(`\n${period} Special Orders Analysis | ${period} 特殊订单分析`));
 
 	// Create a map of tag descriptions in Chinese
 	const tagDescriptions = {
@@ -358,7 +367,7 @@ export function displayStoreMetrics(storeMetrics, periodName) {
 	);
 }
 
-export function displayTagMetrics(tagMetrics) {
+export function displayTagMetrics(tagMetrics, periodName) {
 	console.log(chalk.blue.bold('\n=== Special Orders Analysis | 特殊订单分析 ==='));
 
 	// Get tags and sort alphabetically
@@ -385,7 +394,7 @@ export function displayTagMetrics(tagMetrics) {
 	const totalAllStoresOrders = global.totalAllStoresOrders || 1781; // Fallback to the number we saw in the report
 
 	// Display comprehensive tag metrics table
-	displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders);
+	displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, totalTagRate, totalAllStoresOrders, periodName);
 
 	// Display legend and help text
 	console.log(chalk.gray('\nLegend | 图例:'));

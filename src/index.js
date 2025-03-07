@@ -24,6 +24,79 @@ import { promptDateRange, filterDataByDateRange } from './utils/dateFilter.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Determines the date range from the data
+ * @param {Array<Object>} data - Array of order data
+ * @returns {Object} - Object with startDate, endDate, and periodName
+ */
+function determineDateRange(data) {
+	// Find the earliest and latest dates in the data
+	let earliestDate = new Date('2100-01-01'); // Future date as initial value
+	let latestDate = new Date('1900-01-01'); // Past date as initial value
+	let dateFields = ['Order Date', 'OrderDate', 'Date', 'Ship Date', 'ShipDate'];
+
+	// Parse date strings in MM/DD/YYYY format
+	const parseDate = (dateStr) => {
+		// Handle MM/DD/YYYY format
+		const parts = dateStr.split('/');
+		if (parts.length === 3) {
+			const month = parseInt(parts[0], 10);
+			const day = parseInt(parts[1], 10);
+			const year = parseInt(parts[2], 10);
+			return new Date(year, month - 1, day);
+		}
+		// Fallback to standard Date parsing
+		return new Date(dateStr);
+	};
+
+	// Iterate through the data to find the date range
+	for (const order of data) {
+		for (const field of dateFields) {
+			if (order[field]) {
+				const orderDate = parseDate(order[field]);
+
+				// Skip invalid dates
+				if (isNaN(orderDate.getTime())) continue;
+
+				// Update earliest and latest dates
+				if (orderDate < earliestDate) earliestDate = new Date(orderDate);
+				if (orderDate > latestDate) latestDate = new Date(orderDate);
+
+				// Once we find a valid date field, we can break the inner loop
+				break;
+			}
+		}
+	}
+
+	// Format the period name
+	const startMonthName = earliestDate.toLocaleString('en-US', { month: 'short' });
+	const startDay = earliestDate.getDate();
+	const endMonthName = latestDate.toLocaleString('en-US', { month: 'short' });
+	const endDay = latestDate.getDate();
+	const year = latestDate.getFullYear();
+
+	// Create a period name that includes the exact dates
+	const periodName = `${startMonthName} ${startDay}-${endMonthName} ${endDay}, ${year}`;
+
+	// Format date strings for display
+	const startDateStr = `${(earliestDate.getMonth() + 1).toString().padStart(2, '0')}/${earliestDate
+		.getDate()
+		.toString()
+		.padStart(2, '0')}/${(earliestDate.getFullYear() % 100).toString().padStart(2, '0')}`;
+	const endDateStr = `${(latestDate.getMonth() + 1).toString().padStart(2, '0')}/${latestDate
+		.getDate()
+		.toString()
+		.padStart(2, '0')}/${(latestDate.getFullYear() % 100).toString().padStart(2, '0')}`;
+
+	return {
+		shouldFilter: false, // We're not filtering, just determining the range
+		startDate: earliestDate,
+		endDate: latestDate,
+		periodName,
+		dateRangeStr: `${startDateStr}-${endDateStr}`,
+	};
+}
+
 // Set up command-line interface
 const program = new Command();
 
@@ -37,6 +110,7 @@ program
 	.option('--save', 'Save the report to an Excel file')
 	.option('--csv', 'Save the report as CSV instead of Excel (when used with --save)')
 	.option('-d, --date-range <range>', 'Filter by date range in MM/DD/YY-MM/DD/YY format')
+	.option('--no-prompt', 'Skip interactive prompts and analyze all data')
 	.action(async (filename, options) => {
 		try {
 			console.log(chalk.blue('ShipStation Rates Calculator'));
@@ -52,7 +126,7 @@ program
 			console.log(chalk.green(`Successfully read ${data.length} records\n`));
 
 			// Handle date filtering
-			let dateFilter = { shouldFilter: false, periodName: path.basename(fileToAnalyze, '.csv') };
+			let dateFilter;
 
 			// If date range is provided as a command line option, use it
 			if (options.dateRange) {
@@ -95,9 +169,27 @@ program
 				};
 
 				console.log(chalk.yellow(`Using date range from command line: ${startDateStr} to ${endDateStr}`));
+			} else if (options.prompt === false) {
+				// Skip prompt if --no-prompt option is provided
+				dateFilter = determineDateRange(data);
+				console.log(
+					chalk.yellow(
+						`Analyzing all data from ${dateFilter.startDate.toLocaleDateString()} to ${dateFilter.endDate.toLocaleDateString()}`
+					)
+				);
 			} else {
 				// Otherwise prompt for date range
 				dateFilter = await promptDateRange();
+
+				// If no date range was provided in the prompt, determine it from the data
+				if (!dateFilter.shouldFilter) {
+					dateFilter = determineDateRange(data);
+					console.log(
+						chalk.yellow(
+							`Analyzing all data from ${dateFilter.startDate.toLocaleDateString()} to ${dateFilter.endDate.toLocaleDateString()}`
+						)
+					);
+				}
 			}
 
 			// Apply date filter if requested
@@ -156,7 +248,7 @@ program
 
 			if (!options.storeOnly) {
 				// Display tag metrics with total orders count
-				displayTagMetrics(tagMetrics);
+				displayTagMetrics(tagMetrics, dateFilter.periodName);
 			}
 
 			// Save report if --save option is provided
