@@ -51,7 +51,7 @@ function colorizeValue(formattedValue) {
  * @param {number} totalShippingPaid - Total shipping paid by customers
  * @param {number} totalShippingProfit - Total shipping profit
  * @param {number} totalNetRevenue - Total net revenue
- * @param {string} fileName - Name of the file being analyzed
+ * @param {string} periodName - Period name for the report (e.g., "Feb 1-Mar 15, 2025")
  */
 function displayComprehensiveStoreTable(
 	storeMetrics,
@@ -62,11 +62,10 @@ function displayComprehensiveStoreTable(
 	totalShippingPaid,
 	totalShippingProfit,
 	totalNetRevenue,
-	fileName
+	periodName
 ) {
-	// Extract period from filename (e.g., "Feb-March 2025" from "./ShipStation Orders/Feb-March 2025.csv")
-	const periodMatch = fileName ? fileName.match(/([^\/]+)\.csv$/) : null;
-	const period = periodMatch ? periodMatch[1] : 'Current Period';
+	// Use the period name directly for the table title
+	const period = periodName || 'Current Period';
 
 	console.log(chalk.cyan.bold(`\n${period} Store Shipping Analytics | ${period} 店铺物流分析`));
 
@@ -251,7 +250,7 @@ function displayComprehensiveTagTable(tagMetrics, tags, totalTaggedOrders, total
 	console.log(chalk.gray('占总订单百分比 = 特殊类别订单数 / 所有店铺总订单数'));
 }
 
-export function displayStoreMetrics(storeMetrics, fileName) {
+export function displayStoreMetrics(storeMetrics, periodName) {
 	console.log(chalk.blue.bold('\n=== Store Metrics | 店铺指标 ==='));
 
 	// Get stores and sort by order count (descending)
@@ -291,7 +290,7 @@ export function displayStoreMetrics(storeMetrics, fileName) {
 		totalShippingPaid,
 		totalShippingProfit,
 		totalNetRevenue,
-		fileName
+		periodName
 	);
 
 	// Display legend and help text

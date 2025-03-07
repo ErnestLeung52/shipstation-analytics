@@ -18,6 +18,7 @@ import { displayStoreMetrics, displayTagMetrics } from './display/reporter.js';
 import { selectCSVFile } from './utils/fileSelector.js';
 import { saveReportToCSV } from './utils/reportExporter.js';
 import { saveReportToExcel } from './utils/excelExporter.js';
+import { promptDateRange, filterDataByDateRange } from './utils/dateFilter.js';
 
 // Get the directory name in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +36,7 @@ program
 	.option('-c, --compact', 'Display metrics in compact table format')
 	.option('--save', 'Save the report to an Excel file')
 	.option('--csv', 'Save the report as CSV instead of Excel (when used with --save)')
+	.option('-d, --date-range <range>', 'Filter by date range in MM/DD/YY-MM/DD/YY format')
 	.action(async (filename, options) => {
 		try {
 			console.log(chalk.blue('ShipStation Rates Calculator'));
@@ -46,12 +48,95 @@ program
 
 			// Read and parse the CSV file
 			console.log(chalk.yellow('Reading CSV file...'));
-			const data = await readCSVFile(fileToAnalyze);
+			let data = await readCSVFile(fileToAnalyze);
 			console.log(chalk.green(`Successfully read ${data.length} records\n`));
+
+			// Handle date filtering
+			let dateFilter = { shouldFilter: false, periodName: path.basename(fileToAnalyze, '.csv') };
+
+			// If date range is provided as a command line option, use it
+			if (options.dateRange) {
+				// Parse the date range from command line
+				const [startDateStr, endDateStr] = options.dateRange.split('-');
+
+				// Validate format
+				if (!startDateStr || !endDateStr || !startDateStr.includes('/') || !endDateStr.includes('/')) {
+					throw new Error('Invalid date range format. Use MM/DD/YY-MM/DD/YY');
+				}
+
+				// Parse start date
+				const startParts = startDateStr.split('/');
+				const startMonth = parseInt(startParts[0], 10);
+				const startDay = parseInt(startParts[1], 10);
+				const startYear = parseInt(startParts[2], 10);
+				const fullStartYear = 2000 + startYear;
+
+				// Parse end date
+				const endParts = endDateStr.split('/');
+				const endMonth = parseInt(endParts[0], 10);
+				const endDay = parseInt(endParts[1], 10);
+				const endYear = parseInt(endParts[2], 10);
+				const fullEndYear = 2000 + endYear;
+
+				const startDate = new Date(fullStartYear, startMonth - 1, startDay);
+				const endDate = new Date(fullEndYear, endMonth - 1, endDay);
+
+				// Create period name with exact dates
+				const startMonthName = startDate.toLocaleString('en-US', { month: 'short' });
+				const endMonthName = endDate.toLocaleString('en-US', { month: 'short' });
+				const periodName = `${startMonthName} ${startDay}-${endMonthName} ${endDay}, ${endDate.getFullYear()}`;
+
+				dateFilter = {
+					shouldFilter: true,
+					startDate,
+					endDate,
+					periodName,
+					dateRangeStr: options.dateRange,
+				};
+
+				console.log(chalk.yellow(`Using date range from command line: ${startDateStr} to ${endDateStr}`));
+			} else {
+				// Otherwise prompt for date range
+				dateFilter = await promptDateRange();
+			}
+
+			// Apply date filter if requested
+			if (dateFilter.shouldFilter) {
+				const originalCount = data.length;
+				data = filterDataByDateRange(data, dateFilter.startDate, dateFilter.endDate);
+				console.log(
+					chalk.yellow(
+						`Filtered data by date range: ${dateFilter.startDate.toLocaleDateString()} to ${dateFilter.endDate.toLocaleDateString()}`
+					)
+				);
+				console.log(
+					chalk.green(
+						`Filtered from ${originalCount} to ${data.length} records (${Math.round(
+							(data.length / originalCount) * 100
+						)}% of original data)\n`
+					)
+				);
+
+				// Check if we have data after filtering
+				if (data.length === 0) {
+					console.log(
+						chalk.red(
+							'No data matches the specified date range. Please check your date format and try again.'
+						)
+					);
+					process.exit(1);
+				}
+			}
 
 			// Calculate metrics
 			const storeMetrics = calculateStoreMetrics(data);
 			const tagMetrics = calculateTagMetrics(data);
+
+			// Check if we have store metrics
+			if (Object.keys(storeMetrics).length === 0) {
+				console.log(chalk.red('No store data found. Please check your date range or CSV file.'));
+				process.exit(1);
+			}
 
 			// Calculate total orders across all stores
 			let totalAllStoresOrders = 0;
@@ -65,8 +150,8 @@ program
 				// Make total orders available globally
 				global.totalAllStoresOrders = totalAllStoresOrders;
 
-				// Display store metrics
-				displayStoreMetrics(storeMetrics, fileToAnalyze);
+				// Display store metrics with date range in the title
+				displayStoreMetrics(storeMetrics, dateFilter.periodName);
 			}
 
 			if (!options.storeOnly) {
@@ -79,12 +164,12 @@ program
 				if (options.csv) {
 					// Save as CSV if --csv option is provided
 					console.log(chalk.yellow('\nSaving report to CSV file...'));
-					const savedFilePath = await saveReportToCSV(storeMetrics, tagMetrics, fileToAnalyze);
+					const savedFilePath = await saveReportToCSV(storeMetrics, tagMetrics, dateFilter.periodName);
 					console.log(chalk.green(`Report saved to: ${savedFilePath}`));
 				} else {
 					// Save as Excel by default
 					console.log(chalk.yellow('\nSaving report to Excel file...'));
-					const savedFilePath = await saveReportToExcel(storeMetrics, tagMetrics, fileToAnalyze);
+					const savedFilePath = await saveReportToExcel(storeMetrics, tagMetrics, dateFilter.periodName);
 					console.log(chalk.green(`Report saved to: ${savedFilePath}`));
 				}
 			}
